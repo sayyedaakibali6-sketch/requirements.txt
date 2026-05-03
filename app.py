@@ -14,7 +14,7 @@ client = pymongo.MongoClient("mongodb+srv://abudhabisyed80_db_user:Akki12345@clu
 db = client.fitnessDB
 reels_col = db.reels
 
-# Cloudinary Setup (Tera details maine yahan daal diya hai)
+# Cloudinary Setup - MAINE TERI DETAILS YAHAN SET KAR DI HAIN
 cloudinary.config( 
   cloud_name = "ds0psevfl", 
   api_key = "796123982348574", 
@@ -23,19 +23,17 @@ cloudinary.config(
 
 YT_API_KEY = "AIzaSyBVerjaQcUumGBOSO--M1B4bOFUgXjc8eM"
 
-# 1. YouTube Upload Logic
+# YouTube Upload
 @akki.route('/api/upload', methods=['POST'])
 def upload():
     try:
         data = request.json
         url = data.get("video_url")
         v_id = url.split("shorts/")[1].split("?")[0] if "shorts/" in url else url.split("v=")[1].split("&")[0] if "v=" in url else url.split("/")[-1].split("?")[0]
-        
         api_url = f"https://www.googleapis.com/youtube/v3/videos?id={v_id}&key={YT_API_KEY}&part=statistics,snippet"
         res = requests.get(api_url).json()
-        
         reels_col.insert_one({
-            "video_url": f"https://www.youtube.com/embed/{v_id}?enablejsapi=1&autoplay=0&controls=0&modestbranding=1&rel=0",
+            "video_url": f"https://www.youtube.com/embed/{v_id}?enablejsapi=1&autoplay=0&controls=0",
             "caption": res['items'][0]['snippet']['title'] if 'items' in res else "YouTube Video",
             "channel_name": res['items'][0]['snippet']['channelTitle'] if 'items' in res else "Vanced Pro",
             "type": "youtube"
@@ -44,22 +42,16 @@ def upload():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# 2. Gallery Upload Logic (Using Cloudinary)
+# Gallery Upload (Cloudinary)
 @akki.route('/api/upload-gallery', methods=['POST'])
 def upload_gallery():
     try:
-        if 'video' not in request.files:
-            return jsonify({"error": "No video file"}), 400
-        
         file = request.files['video']
-        caption = request.form.get("caption", "Gallery Video")
-        
-        # Upload to Cloudinary
-        upload_result = cloudinary.uploader.upload(file, resource_type="video")
-        
+        # Uploading to Cloudinary
+        res = cloudinary.uploader.upload(file, resource_type="video")
         reels_col.insert_one({
-            "video_url": upload_result['secure_url'],
-            "caption": caption,
+            "video_url": res['secure_url'],
+            "caption": request.form.get("caption", "Gallery Video"),
             "channel_name": "My Gallery",
             "type": "local"
         })
@@ -67,22 +59,17 @@ def upload_gallery():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# 3. Get All Videos
 @akki.route('/api/reels', methods=['GET'])
 def get_reels():
     reels = list(reels_col.find().sort('_id', -1))
     for r in reels: r['_id'] = str(r['_id'])
     return jsonify(reels)
 
-# 4. Delete One-by-One
 @akki.route('/api/delete/<id>', methods=['DELETE'])
 def delete_video(id):
-    try:
-        reels_col.delete_one({"_id": ObjectId(id)})
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    reels_col.delete_one({"_id": ObjectId(id)})
+    return jsonify({"success": True})
 
 if __name__ == "__main__":
     akki.run(host='0.0.0.0', port=10000)
-    
+  
