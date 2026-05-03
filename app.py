@@ -2,25 +2,26 @@ import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pymongo
+from bson.objectid import ObjectId
 
 akki = Flask(__name__)
 CORS(akki)
 
+# Database Connection
 client = pymongo.MongoClient("mongodb+srv://abudhabisyed80_db_user:Akki12345@cluster0.cdettyo.mongodb.net/fitnessDB?retryWrites=true&w=majority")
 db = client.fitnessDB
 reels_col = db.reels
 
 YT_API_KEY = "AIzaSyBVerjaQcUumGBOSO--M1B4bOFUgXjc8eM"
 
+# 1. YouTube Link Upload
 @akki.route('/api/upload', methods=['POST'])
 def upload():
     try:
         data = request.json
         url = data.get("video_url")
-        # Video ID extraction logic
         v_id = url.split("shorts/")[1].split("?")[0] if "shorts/" in url else url.split("v=")[1].split("&")[0] if "v=" in url else url.split("/")[-1].split("?")[0]
 
-        # YouTube API Call
         api_url = f"https://www.googleapis.com/youtube/v3/videos?id={v_id}&key={YT_API_KEY}&part=statistics,snippet"
         res = requests.get(api_url).json()
         
@@ -28,23 +29,32 @@ def upload():
             item = res['items'][0]
             reels_col.insert_one({
                 "video_id": v_id,
-                "video_url": f"https://www.youtube.com/embed/{v_id}?autoplay=1&modestbranding=1&rel=0&enablejsapi=1&playsinline=1",
+                "video_url": f"https://www.youtube.com/embed/{v_id}?enablejsapi=1&autoplay=0&controls=0&modestbranding=1&rel=0",
                 "caption": item['snippet']['title'],
                 "likes": item['statistics'].get('likeCount', '0'),
                 "channel_name": item['snippet']['channelTitle'],
-                "status": "original"
+                "type": "youtube"
             })
             return jsonify({"success": True}), 200
         return jsonify({"error": "Video not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# 2. Get All Videos
 @akki.route('/api/reels', methods=['GET'])
 def get_reels():
-    # Purana kachra filter karne ke liye
-    reels = list(reels_col.find({"status": "original"}).sort('_id', -1))
+    reels = list(reels_col.find().sort('_id', -1))
     for r in reels: r['_id'] = str(r['_id'])
     return jsonify(reels)
+
+# 3. Delete Single Video (Step by Step Delete)
+@akki.route('/api/delete/<id>', methods=['DELETE'])
+def delete_video(id):
+    try:
+        reels_col.delete_one({"_id": ObjectId(id)})
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     akki.run(host='0.0.0.0', port=10000)
