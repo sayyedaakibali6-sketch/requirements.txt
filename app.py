@@ -6,7 +6,7 @@ import pymongo
 akki = Flask(__name__)
 CORS(akki)
 
-# Database Connection
+# Tumhari Correct MongoDB URI (Sari Keys Included)
 MONGO_URI = "mongodb+srv://abudhabisyed80_db_user:Akki12345@cluster0.cdettyo.mongodb.net/fitnessDB?retryWrites=true&w=majority"
 client = pymongo.MongoClient(MONGO_URI)
 db = client.fitnessDB
@@ -40,5 +40,6 @@ def get_reels():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
+    # Render ke liye port 10000 zaruri hai
     akki.run(host='0.0.0.0', port=10000)
     
