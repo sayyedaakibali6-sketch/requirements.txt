@@ -2,7 +2,6 @@ import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pymongo
-from bson.objectid import ObjectId
 
 akki = Flask(__name__)
 CORS(akki)
@@ -25,14 +24,12 @@ def upload():
         
         if 'items' in res and len(res['items']) > 0:
             item = res['items'][0]
-            # Database mein sirf asli data jayega
             reels_col.insert_one({
                 "video_id": v_id,
-                "video_url": f"https://www.youtube.com/embed/{v_id}?autoplay=1&modestbranding=1&rel=0&enablejsapi=1",
+                "video_url": f"https://www.youtube.com/embed/{v_id}?autoplay=1&modestbranding=1&rel=0&enablejsapi=1&playsinline=1",
                 "caption": item['snippet']['title'],
                 "likes": item['statistics'].get('likeCount', '0'),
-                "channel_name": item['snippet']['channelTitle'],
-                "type": "original" # Filter ke liye
+                "channel_name": item['snippet']['channelTitle']
             })
             return jsonify({"success": True}), 200
         return jsonify({"error": "Video not found"}), 404
@@ -41,10 +38,15 @@ def upload():
 
 @akki.route('/api/reels', methods=['GET'])
 def get_reels():
-    # Sirf wahi videos dikhayega jo original hain
-    reels = list(reels_col.find({"type": "original"}).sort('_id', -1))
+    reels = list(reels_col.find().sort('_id', -1))
     for r in reels: r['_id'] = str(r['_id'])
     return jsonify(reels)
+
+# Purana kachra saaf karne ke liye
+@akki.route('/api/clear', methods=['POST'])
+def clear_db():
+    reels_col.delete_many({})
+    return jsonify({"success": "Database Cleared"})
 
 if __name__ == "__main__":
     akki.run(host='0.0.0.0', port=10000)
