@@ -17,8 +17,10 @@ def upload():
     try:
         data = request.json
         url = data.get("video_url")
-        v_id = url.split("shorts/")[1].split("?")[0] if "shorts/" in url else url.split("v=")[1].split("&")[0] if "v=" in url else url.split("/")[-1]
+        # Video ID extraction logic
+        v_id = url.split("shorts/")[1].split("?")[0] if "shorts/" in url else url.split("v=")[1].split("&")[0] if "v=" in url else url.split("/")[-1].split("?")[0]
 
+        # YouTube API Call
         api_url = f"https://www.googleapis.com/youtube/v3/videos?id={v_id}&key={YT_API_KEY}&part=statistics,snippet"
         res = requests.get(api_url).json()
         
@@ -29,7 +31,8 @@ def upload():
                 "video_url": f"https://www.youtube.com/embed/{v_id}?autoplay=1&modestbranding=1&rel=0&enablejsapi=1&playsinline=1",
                 "caption": item['snippet']['title'],
                 "likes": item['statistics'].get('likeCount', '0'),
-                "channel_name": item['snippet']['channelTitle']
+                "channel_name": item['snippet']['channelTitle'],
+                "status": "original"
             })
             return jsonify({"success": True}), 200
         return jsonify({"error": "Video not found"}), 404
@@ -38,15 +41,10 @@ def upload():
 
 @akki.route('/api/reels', methods=['GET'])
 def get_reels():
-    reels = list(reels_col.find().sort('_id', -1))
+    # Purana kachra filter karne ke liye
+    reels = list(reels_col.find({"status": "original"}).sort('_id', -1))
     for r in reels: r['_id'] = str(r['_id'])
     return jsonify(reels)
-
-# Purana kachra saaf karne ke liye
-@akki.route('/api/clear', methods=['POST'])
-def clear_db():
-    reels_col.delete_many({})
-    return jsonify({"success": "Database Cleared"})
 
 if __name__ == "__main__":
     akki.run(host='0.0.0.0', port=10000)
