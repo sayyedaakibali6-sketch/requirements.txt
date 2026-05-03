@@ -12,7 +12,7 @@ client = pymongo.MongoClient("mongodb+srv://abudhabisyed80_db_user:Akki12345@clu
 db = client.fitnessDB
 reels_col = db.reels
 
-# --- Tumhari API Key yahan set kar di hai ---
+# Tumhari API Key
 YT_API_KEY = "AIzaSyBVerjaQcUumGBOSO--M1B4bOFUgXjc8eM"
 
 @akki.route('/api/upload', methods=['POST'])
@@ -20,39 +20,46 @@ def upload():
     try:
         data = request.json
         url = data.get("video_url")
-        
-        # Shorts aur Normal Video dono ke liye ID nikalna
+        if not url:
+            return jsonify({"error": "No URL provided"}), 400
+
+        # Video ID nikalne ka robust logic
+        v_id = ""
         if "shorts/" in url:
             v_id = url.split("shorts/")[1].split("?")[0]
         elif "v=" in url:
             v_id = url.split("v=")[1].split("&")[0]
+        elif "youtu.be/" in url:
+            v_id = url.split("youtu.be/")[1].split("?")[0]
         else:
             v_id = url.split("/")[-1].split("?")[0]
 
-        # YouTube API se Real-time data fetch karna
+        # YouTube API Call
         api_url = f"https://www.googleapis.com/youtube/v3/videos?id={v_id}&key={YT_API_KEY}&part=statistics,snippet"
         res = requests.get(api_url).json()
         
-        if not res.get('items'):
-            return jsonify({"error": "Video not found"}), 404
+        if 'items' not in res or not res['items']:
+            return jsonify({"error": "YouTube API couldn't find this video. Check if link is correct."}), 400
             
         video_data = res['items'][0]
-        stats = video_data['statistics']
-        snippet = video_data['snippet']
+        stats = video_data.get('statistics', {})
+        snippet = video_data.get('snippet', {})
 
-        # Database mein save karna
+        # Database insertion
         reels_col.insert_one({
             "video_id": v_id,
             "video_url": f"https://www.youtube.com/embed/{v_id}?autoplay=1&modestbranding=1&rel=0&iv_load_policy=3&enablejsapi=1&playsinline=1",
-            "caption": snippet['title'],
+            "caption": snippet.get('title', 'No Title'),
             "likes": stats.get('likeCount', '0'),
-            "channel_name": snippet['channelTitle'],
+            "channel_name": snippet.get('channelTitle', 'Unknown'),
             "views": stats.get('viewCount', '0'),
             "comments": stats.get('commentCount', '0')
         })
         return jsonify({"success": True}), 200
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error occurred: {str(e)}") # Ye Render ke logs mein dikhega
+        return jsonify({"error": "Server error, check logs"}), 500
 
 @akki.route('/api/reels', methods=['GET'])
 def get_reels():
