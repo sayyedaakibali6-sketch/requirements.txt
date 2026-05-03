@@ -13,13 +13,21 @@ reels_col = db.reels
 @akki.route('/api/upload', methods=['POST'])
 def upload():
     data = request.json
-    url = data.get("video_url")
-    # YouTube Shorts link ko embed link mein convert karna
-    if "shorts/" in url:
-        video_id = url.split("shorts/")[1].split("?")[0]
-        url = f"https://www.youtube.com/embed/{video_id}?autoplay=1&mute=0&controls=0&loop=1&modestbranding=1&showinfo=0&rel=0"
+    raw_url = data.get("video_url")
     
-    reels_col.insert_one({"video_url": url, "caption": data.get("caption", ""), "likes": "0"})
+    # Smart Link Converter
+    if "shorts/" in raw_url:
+        v_id = raw_url.split("shorts/")[1].split("?")[0]
+        final_url = f"https://www.youtube.com/embed/{v_id}?autoplay=1&controls=0&rel=0&modestbranding=1"
+    elif "instagram.com/reels/" in raw_url or "instagram.com/p/" in raw_url:
+        final_url = raw_url.split("?")[0] + "embed/captioned"
+    elif "tiktok.com" in raw_url:
+        # TikTok ke liye direct embed logic
+        final_url = raw_url # TikTok links usually need their specific embed script, but iframe works for some
+    else:
+        final_url = raw_url # MP4 link direct
+
+    reels_col.insert_one({"video_url": final_url, "caption": data.get("caption", ""), "type": "embed"})
     return jsonify({"success": True})
 
 @akki.route('/api/reels', methods=['GET'])
