@@ -1,4 +1,3 @@
-import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pymongo
@@ -18,6 +17,7 @@ reels_col = db.reels
 @akki.route('/api/reels', methods=['GET'])
 def get_reels():
     try:
+        # Reels ko desc order mein pull karna taaki nayi sabse upar ho
         reels = list(reels_col.find().sort('_id', -1))
         for r in reels: 
             r['_id'] = str(r['_id'])
