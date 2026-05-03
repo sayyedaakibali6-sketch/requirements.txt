@@ -14,7 +14,7 @@ client = pymongo.MongoClient("mongodb+srv://abudhabisyed80_db_user:Akki12345@clu
 db = client.fitnessDB
 reels_col = db.reels
 
-# Cloudinary Setup - MAINE TERI DETAILS YAHAN SET KAR DI HAIN
+# Cloudinary Setup
 cloudinary.config( 
   cloud_name = "ds0psevfl", 
   api_key = "796123982348574", 
@@ -23,7 +23,6 @@ cloudinary.config(
 
 YT_API_KEY = "AIzaSyBVerjaQcUumGBOSO--M1B4bOFUgXjc8eM"
 
-# YouTube Upload
 @akki.route('/api/upload', methods=['POST'])
 def upload():
     try:
@@ -42,13 +41,13 @@ def upload():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# Gallery Upload (Cloudinary)
+# Gallery Upload Fix
 @akki.route('/api/upload-gallery', methods=['POST'])
 def upload_gallery():
     try:
         file = request.files['video']
-        # Uploading to Cloudinary
-        res = cloudinary.uploader.upload(file, resource_type="video")
+        # 'vanced_upload' wahi naam hai jo tumne Step 1 mein rakha tha
+        res = cloudinary.uploader.upload(file, resource_type="video", upload_preset="vanced_upload")
         reels_col.insert_one({
             "video_url": res['secure_url'],
             "caption": request.form.get("caption", "Gallery Video"),
