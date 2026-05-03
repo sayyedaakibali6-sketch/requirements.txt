@@ -2,7 +2,6 @@ import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pymongo
-from bson.objectid import ObjectId
 import os
 
 akki = Flask(__name__)
@@ -15,34 +14,27 @@ reels_col = db.reels
 @akki.route('/api/search-all', methods=['GET'])
 def search_all():
     query = request.args.get('q', '')
-    if not query: return jsonify({"error": "Empty query"})
+    if not query: return jsonify({"error": "Empty"})
     try:
+        # Chrome suggestion logic
         web_res = requests.get(f"https://suggestqueries.google.com/complete/search?client=firefox&q={query}").json()
-        # FIXED: Direct YouTube Search Video Link
-        yt_search_url = f"https://www.youtube.com/embed?listType=search&list={query}"
-        return jsonify({
-            "web": web_res[1][:5], 
-            "yt_link": yt_search_url,
-            "status": "Secure"
-        })
+        # YouTube Search Redirect logic
+        yt_search = f"https://www.youtube.com/embed?listType=search&list={query}"
+        return jsonify({"web": web_res[1][:5], "yt_link": yt_search})
     except:
-        return jsonify({"error": "Busy"})
+        return jsonify({"error": "Server Down"})
 
 @akki.route('/api/reels', methods=['GET'])
 def get_reels():
-    # Scrolling wapas lane ke liye fetch logic
     reels = list(reels_col.find().sort('_id', -1))
-    for r in reels: r['_id'] = str(r['_id'])
+    for r in reels: 
+        r['_id'] = str(r['_id'])
+        # Link ko embed format mein convert karna zaroori hai
+        if 'youtube.com/shorts/' in r['video_url']:
+            r['video_url'] = r['video_url'].replace('shorts/', 'embed/')
+        elif 'watch?v=' in r['video_url']:
+            r['video_url'] = r['video_url'].replace('watch?v=', 'embed/')
     return jsonify(reels)
-
-# Admin Upload Fix
-@akki.route('/api/add-reel', methods=['POST'])
-def add_reel():
-    data = request.json
-    if 'video_url' in data:
-        reels_col.insert_one(data)
-        return jsonify({"message": "Success"})
-    return jsonify({"error": "Failed"}), 400
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
