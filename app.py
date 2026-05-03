@@ -14,7 +14,7 @@ client = pymongo.MongoClient("mongodb+srv://abudhabisyed80_db_user:Akki12345@clu
 db = client.fitnessDB
 reels_col = db.reels
 
-# Cloudinary Setup (Fixed Credentials)
+# Cloudinary Setup (Tera exact details)
 cloudinary.config( 
   cloud_name = "ds0psevfl", 
   api_key = "796123982348574", 
@@ -23,7 +23,6 @@ cloudinary.config(
 
 YT_API_KEY = "AIzaSyBVerjaQcUumGBOSO--M1B4bOFUgXjc8eM"
 
-# YouTube Upload
 @akki.route('/api/upload', methods=['POST'])
 def upload():
     try:
@@ -42,7 +41,7 @@ def upload():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# Gallery Upload (Using your 'vanced_upload' preset)
+# GALLERY UPLOAD FIX (Yahan focus karo)
 @akki.route('/api/upload-gallery', methods=['POST'])
 def upload_gallery():
     try:
@@ -50,21 +49,23 @@ def upload_gallery():
             return jsonify({"error": "No video file found"}), 400
             
         file = request.files['video']
-        # Force using the 'vanced_upload' unsigned preset you created
-        res = cloudinary.uploader.upload(
+        
+        # Cloudinary direct upload with your preset
+        upload_result = cloudinary.uploader.upload(
             file, 
             resource_type="video", 
             upload_preset="vanced_upload"
         )
         
         reels_col.insert_one({
-            "video_url": res['secure_url'],
-            "caption": request.form.get("caption", "Gallery Video"),
+            "video_url": upload_result['secure_url'],
+            "caption": request.form.get("caption", "Gallery Reel"),
             "channel_name": "My Gallery",
             "type": "local"
         })
         return jsonify({"success": True})
     except Exception as e:
+        print(f"Error: {str(e)}") # Ye Render logs mein dikhega
         return jsonify({"error": str(e)}), 500
 
 @akki.route('/api/reels', methods=['GET'])
