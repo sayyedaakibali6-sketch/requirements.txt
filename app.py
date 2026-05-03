@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pymongo
 from bson.objectid import ObjectId
+import os
 
 akki = Flask(__name__)
 CORS(akki)
@@ -18,31 +19,25 @@ live_col = db.live_status
 def search_all():
     query = request.args.get('q', '')
     if not query: return jsonify({"error": "Blank query"})
-    
-    results = {"web": [], "videos": []}
-    
     try:
-        # 1. Web Search (Direct Google Scraper Logic)
+        # Web suggestions
         web_res = requests.get(f"https://suggestqueries.google.com/complete/search?client=firefox&q={query}").json()
-        results["web"] = web_res[1][:5] # Top 5 suggestions/topics
-        
-        # 2. YouTube Search Logic (CID, Crime Patrol etc)
-        # Hum YouTube ke search page ko parse karke embed links nikalenge
-        yt_url = f"https://www.youtube.com/results?search_query={query}"
-        # Note: Professional setup ke liye YouTube Data API v3 use karna best hai
-        results["yt_link"] = f"https://www.youtube.com/embed?listType=search&list={query}"
-        
-        return jsonify(results)
+        # YouTube list logic
+        yt_link = f"https://www.youtube.com/embed?listType=search&list={query}"
+        return jsonify({"web": web_res[1][:5], "yt_link": yt_link})
     except:
         return jsonify({"error": "Server Busy"})
 
-# --- REELS & LIVE APIs (Rest same as before) ---
+# --- REELS & LIVE APIs ---
 @akki.route('/api/reels', methods=['GET'])
 def get_reels():
     reels = list(reels_col.find().sort('_id', -1))
     for r in reels: r['_id'] = str(r['_id'])
     return jsonify(reels)
 
+# --- RENDER PORT FIX ---
 if __name__ == "__main__":
-    akki.run(host='0.0.0.0', port=10000)
+    # Render automatically sets a PORT, we must use it
+    port = int(os.environ.get("PORT", 10000))
+    akki.run(host='0.0.0.0', port=port)
     
