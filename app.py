@@ -14,7 +14,7 @@ client = pymongo.MongoClient("mongodb+srv://abudhabisyed80_db_user:Akki12345@clu
 db = client.fitnessDB
 reels_col = db.reels
 
-# Cloudinary Setup
+# Cloudinary Setup (Fixed Credentials)
 cloudinary.config( 
   cloud_name = "ds0psevfl", 
   api_key = "796123982348574", 
@@ -23,6 +23,7 @@ cloudinary.config(
 
 YT_API_KEY = "AIzaSyBVerjaQcUumGBOSO--M1B4bOFUgXjc8eM"
 
+# YouTube Upload
 @akki.route('/api/upload', methods=['POST'])
 def upload():
     try:
@@ -41,13 +42,21 @@ def upload():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# Gallery Upload Fix
+# Gallery Upload (Using your 'vanced_upload' preset)
 @akki.route('/api/upload-gallery', methods=['POST'])
 def upload_gallery():
     try:
+        if 'video' not in request.files:
+            return jsonify({"error": "No video file found"}), 400
+            
         file = request.files['video']
-        # 'vanced_upload' wahi naam hai jo tumne Step 1 mein rakha tha
-        res = cloudinary.uploader.upload(file, resource_type="video", upload_preset="vanced_upload")
+        # Force using the 'vanced_upload' unsigned preset you created
+        res = cloudinary.uploader.upload(
+            file, 
+            resource_type="video", 
+            upload_preset="vanced_upload"
+        )
+        
         reels_col.insert_one({
             "video_url": res['secure_url'],
             "caption": request.form.get("caption", "Gallery Video"),
